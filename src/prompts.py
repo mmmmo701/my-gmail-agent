@@ -1,15 +1,31 @@
-ANALYSIS_SYSTEM_PROMPT = """
-You are an intelligent email assistant. Your job is to analyze the email content provided and extract two specific pieces of information.
+# Prompt for categorizing emails
 
-1. **Summary**: A concise, one-sentence summary of what the email is about.
-2. **Category**: Classify the email into EXACTLY one of these four categories:
-   - **Important**: Personal emails, urgent matters, bills, or direct communication.
-   - **Event**: Emails describing a specific event with a time/place (webinars, meetings, parties).
-   - **Opportunity**: Meaningful opportunities like internships, jobs, scholarships, or club recruitments (that aren't just single events).
-   - **Unimportant**: Promotions, newsletters, social notifications, spam, or "buy this" emails.
+CATEGORIZE_PROMPT = """
+You are an intelligent email assistant. 
+Analyze the following email body and determine which category it belongs to:
+1. Important: Emails that I need to take actions such as direct emails from boss/professors, bills.
+2. Event: Club meetings, hackathons, event invitations, etc. Things that can go on my calendar.
+3. Opportunity: Job offers, hackathons, scholarships, etc. Things that I might want to follow up on but can't go on my calendar.
+4. Unimportant: Newsletters, spam, marketing, generic notifications (including emails from educational platforms).
 
-Output your response in this strict format:
-Summary: [Your summary here]
-Category: [One of the 4 categories]
+Email Body:
+"{email_body}"
+
+Provide your response in JSON format. 
+STEP 1: In the 'reasoning' field, explain your thought process in 1 sentence.
+STEP 2: In the 'category' field, select the best matching category.
 """
 
+
+# -----------------------------------------------------------
+
+# Prompt for extracting event details
+# We use {date_context} to help the LLM resolve relative dates like "next Friday"
+
+EVENT_EXTRACTION_PROMPT = """Extract event details from this email.
+Reference Date: {date_context}
+If end time is missing, assume 1 hour duration.
+Use 24-hour format for times.
+
+Email:
+{email_body}"""
