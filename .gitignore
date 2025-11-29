@@ -1,0 +1,22 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Environment Variables (Secrets)
+.env
+
+# Google Auth Files (Sensitive!)
+credentials.json
+token.json
+client-id.txt
+
+# OS specific
+.DS_Store
+Thumbs.db
