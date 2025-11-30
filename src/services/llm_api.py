@@ -32,6 +32,10 @@ class OllamaClient:
         self.event_schema = {
             "type": "object",
             "properties": {
+                "reasoning": {
+                    "type": "string",
+                    "description": "A brief explanation of the event details extracted."
+                },
                 "summary": {"type": "string"},
                 "description": {"type": "string"},
                 "location": {"type": "string"},
@@ -52,7 +56,7 @@ class OllamaClient:
                     "required": ["dateTime"]
                 }
             },
-            "required": ["summary", "start", "end", "description"]
+            "required": ["reasoning", "summary", "start", "end", "description"]
         }
 
     def categorize_email(self, email_body):

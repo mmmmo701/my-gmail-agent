@@ -9,10 +9,6 @@ class Constants(IntEnum):
     GENERATING_EVENT = auto()
     EVENT_CREATED = auto()
     EVENT_ADDED = auto()
-    
-    # llm
-    LLM_JSON_ERROR = auto()
-    LLM_EVENT_ERROR = auto()
 
 
 class TextIO:
@@ -24,9 +20,6 @@ class TextIO:
             "Generating Calendar Event...",
             "Event created successfully. Now adding events to your Google Calendar.",
             "Event added successfully.",
-
-            # llm
-            "Error: LLM failed to produce valid JSON.",
         ]
 
 

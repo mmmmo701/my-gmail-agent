@@ -2,18 +2,21 @@
 
 CATEGORIZE_PROMPT = """
 You are an intelligent email assistant. 
-Analyze the following email body and determine which category it belongs to:
-1. Important: Emails that I need to take actions such as direct emails from boss/professors, bills.
-2. Event: Club meetings, hackathons, event invitations, etc. Things that can go on my calendar.
-3. Opportunity: Job offers, scholarships, etc. Things that I might want to follow up on but can't go on my calendar.
-4. Unimportant: Newsletters, spam, marketing, generic notifications (including emails from educational platforms).
+Analyze the following email body and classify it into EXACTLY one of these categories. 
+Prioritize 'Event' if the email describes a specific occurrence with a date and time.
+
+Categories:
+1. Event: A specific activity or meeting that takes place at a specific date and time. Must be something attendable (e.g., club meetings, hackathons, webinars, flights, interviews). NOT just a deadline.
+2. Important: Emails requiring direct action or containing crucial information (e.g., from boss/professors, bills, grades, legal/medical updates).
+3. Opportunity: Solicitations for jobs, scholarships, internships, or clubs. These may have 'deadlines' but are not 'events' you attend.
+4. Unimportant: Newsletters, promotional spam, social media notifications, or generic blasts.
 
 Email Body:
 "{email_body}"
 
 Provide your response in JSON format. 
 STEP 1: In the 'reasoning' field, explain your thought process in 1 sentence.
-STEP 2: In the 'category' field, select the best matching category.
+STEP 2: In the 'category' field, select the best matching category from the list above.
 """
 
 
@@ -41,6 +44,7 @@ You are an intelligent calendar assistant. Your goal is to extract a specific, s
 
 ### JSON OUTPUT SCHEMA
 {{
+  "reasoning": "String (A brief explanation of the event details extracted.)",
   "summary": "String (The Event Title)",
   "start": {{
     "dateTime": "ISO 8601 String (YYYY-MM-DDTHH:MM:SS)",
