@@ -8,8 +8,9 @@ BASE_DIR = Path(__file__).parent.parent
 CREDENTIALS_PATH = BASE_DIR / "credentials.json"
 TOKEN_PATH = BASE_DIR / "token.json"
 
-# API Scopes
-# "modify" allows reading, writing, and sending. 
-# We need this now so we don't have to re-authenticate later when adding "Draft" features.
-SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/calendar'  
+]
 
+DEBUG_MODE = True  # Set to True to enable debug logging

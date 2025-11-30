@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from src.prompts import CATEGORIZE_PROMPT, EVENT_EXTRACTION_PROMPT
+from src.ui.text_io import TextIO, Constants
 
 load_dotenv()
 
@@ -31,13 +32,27 @@ class OllamaClient:
         self.event_schema = {
             "type": "object",
             "properties": {
-                "summary": {"type": "string", "description": "Short title of the event"},
-                "start_time": {"type": "string", "description": "ISO 8601 format (YYYY-MM-DD HH:MM:SS)"},
-                "end_time": {"type": "string", "description": "ISO 8601 format (YYYY-MM-DD HH:MM:SS)"},
-                "location": {"type": "string", "description": "Physical location or URL"},
-                "description": {"type": "string", "description": "Brief details about the event"}
+                "summary": {"type": "string"},
+                "description": {"type": "string"},
+                "location": {"type": "string"},
+                "start": {
+                    "type": "object",
+                    "properties": {
+                        "dateTime": {"type": "string"},
+                        "timeZone": {"type": "string"}
+                    },
+                    "required": ["dateTime"]
+                },
+                "end": {
+                    "type": "object",
+                    "properties": {
+                        "dateTime": {"type": "string"},
+                        "timeZone": {"type": "string"}
+                    },
+                    "required": ["dateTime"]
+                }
             },
-            "required": ["summary", "start_time", "end_time", "location", "description"]
+            "required": ["summary", "start", "end", "description"]
         }
 
     def categorize_email(self, email_body):
@@ -66,67 +81,92 @@ class OllamaClient:
             return "Unimportant"
         
     def create_event(self, email_body, email_date_str=None):
-        """
-        Extracts event details and returns an ICS string.
-        """
-        clean_body = email_body[:4000]
+        ui = TextIO()
+
+        clean_body = email_body[:8000]
+        date_str = email_date_str if email_date_str else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        # Determine the reference date for the prompt
-        date_str = email_date_str if email_date_str else datetime.now().strftime('%Y-%m-%d')
-        
-        # Use the imported prompt template
         prompt = EVENT_EXTRACTION_PROMPT.format(
             date_context=date_str,
             email_body=clean_body
         )
 
         try:
-            # 1. Extract Data as JSON
             response = ollama.chat(
                 model=MODEL,
                 messages=[{'role': 'user', 'content': prompt}],
-                format=self.event_schema,
-                options={'temperature': 0} 
+                format=self.event_schema, 
+                options={'temperature': 0.1} 
             )
             
-            event_data = json.loads(response['message']['content'])
+            raw_json = response['message']['content']
+            event_data = json.loads(raw_json)
             
-            # 2. Convert to ICS Format
-            return self._generate_ics_string(event_data)
+            validated_data = self._validate_and_fix_event_data(event_data)
+            return self._generate_ics_string(validated_data)
 
+        except json.JSONDecodeError:
+            ui.show_error("LLM failed to produce valid JSON.")
+            return None
         except Exception as e:
-            print(f"LLM Error (Event): {e}")
+            ui.show_error(f"LLM event error: {e}")
             return None
 
+    def _validate_and_fix_event_data(self, data):
+        try:
+            # Parse ISO strings to Python datetime objects
+            start_dt = datetime.fromisoformat(data['start']['dateTime'])
+            end_dt = datetime.fromisoformat(data['end']['dateTime'])
+
+            # Guardrail: If End is before or same as Start, fix it.
+            if end_dt <= start_dt:
+                end_dt = start_dt + timedelta(hours=1)
+                # Update the data dictionary with the fixed time
+                data['end']['dateTime'] = end_dt.isoformat()
+
+        except (ValueError, KeyError):
+            # Fallback: If parsing fails entirely, create a "now" event
+            now = datetime.now()
+            data['start']['dateTime'] = now.isoformat()
+            data['end']['dateTime'] = (now + timedelta(hours=1)).isoformat()
+        
+        # Ensure optional fields exist to prevent KeyErrors later
+        if 'location' not in data:
+            data['location'] = ""
+            
+        return data
+
     def _generate_ics_string(self, data):
-        """
-        Converts the JSON dictionary to a valid .ics string.
-        """
-        def format_date_for_ics(iso_date_str):
-            try:
-                # Try parsing the ISO format output by the LLM
-                dt = datetime.fromisoformat(iso_date_str)
-                return dt.strftime('%Y%m%dT%H%M%S')
-            except ValueError:
-                # Fallback if LLM outputs weird date format
-                return datetime.now().strftime('%Y%m%dT%H%M%S')
+        def to_ics_format(iso_str):
+            # Converts ISO 8601 (2023-10-27T14:00:00) to ICS format (20231027T140000)
+            dt = datetime.fromisoformat(iso_str)
+            return dt.strftime('%Y%m%dT%H%M%S')
 
-        start = format_date_for_ics(data.get('start_time', ''))
-        end = format_date_for_ics(data.get('end_time', ''))
-        now = datetime.now().strftime('%Y%m%dT%H%M%SZ')
+        # Use helper to format dates safely
+        start_str = to_ics_format(data['start']['dateTime'])
+        end_str = to_ics_format(data['end']['dateTime'])
+        
+        now_stamp = datetime.now().strftime('%Y%m%dT%H%M%SZ')
         uid = str(uuid.uuid4())
+        
+        # Clean string fields to prevent ICS breakage (newlines can break headers)
+        summary = data.get('summary', 'New Event').replace('\n', ' ')
+        description = data.get('description', '').replace('\n', '\\n')
+        location = data.get('location', '').replace('\n', ' ')
 
+        # Construct ICS
         ics_content = f"""BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//MyGmailAgent//EN
 BEGIN:VEVENT
 UID:{uid}
-DTSTAMP:{now}
-DTSTART:{start}
-DTEND:{end}
-SUMMARY:{data['summary']}
-DESCRIPTION:{data['description']}
-LOCATION:{data['location']}
+DTSTAMP:{now_stamp}
+DTSTART;TZID=Local:{start_str}
+DTEND;TZID=Local:{end_str}
+SUMMARY:{summary}
+DESCRIPTION:{description}
+LOCATION:{location}
+STATUS:CONFIRMED
 END:VEVENT
 END:VCALENDAR"""
         
