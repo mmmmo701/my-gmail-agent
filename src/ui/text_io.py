@@ -21,9 +21,7 @@ class TextIO:
             "Event created successfully. Now adding events to your Google Calendar.",
             "Event added successfully.",
         ]
-
-
-
+        
     # Display a string to the user
     
     def show_str(self, s):
@@ -59,10 +57,10 @@ class TextIO:
 
     def show_cover(self):
         cover_text = """
-        ╔════════════════════════════════════════╗
-        ║             GMAIL AGENT                ║
-        ║             Welcome                    ║
-        ╚════════════════════════════════════════╝
+        |----------------------------------------|
+        |             GMAIL AGENT                |
+        |             Welcome                    |
+        |----------------------------------------|
         """
         print(cover_text)
     
